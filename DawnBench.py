@@ -80,7 +80,7 @@ class ResNet(nn.Module):
             layers.append(block(self.in_planes, planes, stride))
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
-
+ 
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
@@ -109,7 +109,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
 
 total_step = len(train_loader)
-sched_linear_1 = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.005, max_lr=0.1, step_size_up=15, step_size_down=15, mode="triangular")
+sched_linear_1 = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.005, max_lr=0.1, step_size_up=15, step_size_down=15, mode="triangular2")
 sched_linear_3 = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.005/0.1, end_factor=0.005/5, verbose=False)
 scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[sched_linear_1, sched_linear_3], milestones=[30])
 
