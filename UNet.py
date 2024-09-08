@@ -30,6 +30,12 @@ class UNet(nn.Module):
         self.upconv1 = self.upconv_block(128, 64)
         
         self.final_conv = nn.Conv2d(64, 1, kernel_size=1)
+        
+        # Define the dynamic convolution blocks as attributes
+        self.conv_block_512 = self.conv_block(1024, 512)
+        self.conv_block_256 = self.conv_block(512, 256)
+        self.conv_block_128 = self.conv_block(256, 128)
+        self.conv_block_64 = self.conv_block(128, 64)
     
     def conv_block(self, in_channels, out_channels):
         return nn.Sequential(
@@ -58,16 +64,16 @@ class UNet(nn.Module):
         # Decoder
         d4 = self.upconv4(m)
         d4 = torch.cat((d4, e4), dim=1)
-        d4 = self.conv_block(d4.size(1), 512)(d4)  # Adjust channels
+        d4 = self.conv_block_512(d4)
         d3 = self.upconv3(d4)
         d3 = torch.cat((d3, e3), dim=1)
-        d3 = self.conv_block(d3.size(1), 256)(d3)  # Adjust channels
+        d3 = self.conv_block_256(d3)
         d2 = self.upconv2(d3)
         d2 = torch.cat((d2, e2), dim=1)
-        d2 = self.conv_block(d2.size(1), 128)(d2)  # Adjust channels
+        d2 = self.conv_block_128(d2)
         d1 = self.upconv1(d2)
         d1 = torch.cat((d1, e1), dim=1)
-        d1 = self.conv_block(d1.size(1), 64)(d1)  # Adjust channels
+        d1 = self.conv_block_64(d1)
         
         out = self.final_conv(d1)
         return out
@@ -124,7 +130,7 @@ val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=1)
 model = UNet().to(device)
 criterion = nn.BCEWithLogitsLoss()  # Use appropriate loss for binary segmentation
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
-
+print(model)
 # Training loop
 num_epochs = 25
 for epoch in range(num_epochs):
