@@ -5,7 +5,6 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import os
-import numpy as np
 import torch.nn.functional as F
 
 # Device configuration
@@ -31,7 +30,6 @@ class UNet(nn.Module):
         
         self.final_conv = nn.Conv2d(64, 1, kernel_size=1)
         
-        # Define the dynamic convolution blocks as attributes
         self.conv_block_512 = self.conv_block(1024, 512)
         self.conv_block_256 = self.conv_block(512, 256)
         self.conv_block_128 = self.conv_block(256, 128)
@@ -103,6 +101,25 @@ class BrainSegmentationDataset(Dataset):
         
         return image, label
 
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=1e-6):
+        super(DiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, outputs, targets):
+        # Sigmoid activation is applied to the outputs to convert logits to probabilities
+        outputs = torch.sigmoid(outputs)
+        
+        # Flatten the outputs and targets to calculate Dice coefficient
+        outputs = outputs.view(-1)
+        targets = targets.view(-1)
+        
+        intersection = (outputs * targets).sum()
+        dice = (2. * intersection + self.smooth) / (outputs.sum() + targets.sum() + self.smooth)
+        
+        return 1 - dice
+    
+
 # Define transforms for the dataset
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
@@ -128,11 +145,12 @@ val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=1)
 
 # Initialize the model, criterion, and optimizer
 model = UNet().to(device)
-criterion = nn.BCEWithLogitsLoss()  # Use appropriate loss for binary segmentation
+criterion = DiceLoss()  # Use DiceLoss for binary segmentation
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 print(model)
+
 # Training loop
-num_epochs = 25
+num_epochs = 1
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
