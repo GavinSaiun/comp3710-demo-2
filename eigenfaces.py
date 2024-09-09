@@ -24,15 +24,15 @@ print("n_classes: %d" % n_classes)
 # Split into a training set and a test set using a stratified k fold
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)# Compute a PCA (eigenfaces) on the face dataset (treated as unlabeled
 # dataset): unsupervised feature extraction / dimensionality reduction
-n_components = 150
+n_components = 150 # Number of principle components to keep
 
-# Center data
+# Center data STANDARDIZE DATA SO THAT VARIANCE IS ON SCALE
 mean = np.mean(X_train, axis=0)
 X_train -= mean
 X_test -= mean
-#Eigen-decomposition
+#Eigen-decomposition by using singular value decomposition
 U, S, V = np.linalg.svd(X_train, full_matrices=False)
-components = V[:n_components]
+components = V[:n_components] # Selects the top 150 principle componenets
 eigenfaces = components.reshape((n_components, h, w))
 #project into PCA subspace
 X_transformed = np.dot(X_train, components.T)
@@ -42,6 +42,7 @@ print(X_test_transformed.shape)
 
 import matplotlib.pyplot as plt
 # Qualitative evaluation of the predictions using matplotlib
+#e the performance of the dimensionality reduction
 def plot_gallery(images, titles, h, w, n_row=3, n_col=4):
     """Helper function to plot a gallery of portraits"""
     plt.figure(figsize=(1.8 * n_col, 2.4 * n_row))
@@ -66,6 +67,7 @@ plt.plot(eigenvalueCount, ratio_cumsum[:n_components])
 plt.title('Compactness')
 plt.show()
 
+# Classifiers, to assign a name to each face
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 #build random forest
@@ -82,3 +84,27 @@ print("Which Correct:",correct)
 print("Total Correct:",np.sum(correct))
 print("Accuracy:",np.sum(correct)/total_test)
 print(classification_report(y_test, predictions, target_names=target_names))
+
+
+# WHhat is Principle Componenet Analysis?
+"""
+a dimensionality reduction method used to simplify a large dataset into a
+smaller set while keeping the significant patterns and trends.
+
+reduce the number of variables of a data set, while preserving as much information as possible.
+PCA represents the direction that explains the maximum amount of explained_variance
+
+eigenvectors are the directions of the most variance, eigen values are the variance
+1. Standardize the initial variables
+2. Compute the Covariance Matrix to identify correlations
+3. Compute eigenvalues and eigenvectors of the covariance matrix to identify pca 
+4. Create feature vector to decide on what principal componenets to keep 
+
+
+F1 score is the: The harmonic mean of precision
+"""
+
+
+
+
+
