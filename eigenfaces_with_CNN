@@ -14,9 +14,9 @@ if not torch.cuda.is_available():
     print("Warning CUDA not Found. Using CPU")
 
 # Hyper-parameters
-num_epochs = 8
+num_epochs = 8 # The number of times the model will iterate over the training dataset
 learning_rate = 1e-3
-batch_size = 128
+batch_size = 128 # the number of samples before backpropogration
 num_classes = 7  # Number of classes in LFW dataset
 channels = 1  # Since images are grayscale
 
@@ -39,7 +39,7 @@ X_test = torch.tensor(X_test, dtype=torch.float32)
 y_train = torch.tensor(y_train, dtype=torch.long)
 y_test = torch.tensor(y_test, dtype=torch.long)
 
-# Data loaders
+# Data loaders, wraps dataset into batches for easy access, shuffles the data at each epoch
 train_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X_train, y_train),
                                            batch_size=batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(dataset=torch.utils.data.TensorDataset(X_test, y_test),
@@ -50,9 +50,13 @@ class ConvNetwork(nn.Module):
     def __init__(self, num_classes=7):
         super(ConvNetwork, self).__init__()
         self.layer1 = nn.Sequential(
+            # Applies Convolution with 32 filters and kernel size of 3x3
             nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1, padding=1),
+            # Batch Normalization
             nn.BatchNorm2d(32),
+            # ReLu activation
             nn.ReLU(),
+            # Max Pooling to reduce the spatial dimensions to 2x2
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         self.layer2 = nn.Sequential(
@@ -61,13 +65,22 @@ class ConvNetwork(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
+        # Dense Layer, every neuron is connected to every neuron in the previous
+
+        # first fully connected layer parameter(num_input_neurons, num_output_neurons)
+        # 32 * 12 * 9 = number of output channels * height of feature * width, 128 = number of neurons in layer
         self.fc1 = nn.Linear(32 * 12 * 9, 128)  # Adjust according to your image size
+
+        # 128, 7
         self.fc2 = nn.Linear(128, num_classes)
 
+    # Forward Pass
     def forward(self, x):
+        # Apply convolutional layers to extract and refine features   
         out = self.layer1(x)
         out = self.layer2(out)
-        out = out.view(out.size(0), -1)  # Flatten the output
+        # Flatten the output tensor for dense layers
+        out = out.view(out.size(0), -1)  # Flatten the output for dense layers
         out = self.fc1(out)
         out = self.fc2(out)
         return out
@@ -83,19 +96,21 @@ print("> Training")
 model.train()
 start = time.time()
 
+# Loop the training dataset for each epoch
 for epoch in range(num_epochs):
     for i, (images, labels) in enumerate(train_loader):
+        # Move images and labels to GPU 
         images = images.to(device)
         labels = labels.to(device)
 
         # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
+        outputs = model(images) # Get predictions
+        loss = criterion(outputs, labels) # compute loss
 
         # Backward and optimize
-        optimizer.zero_grad()
+        optimizer.zero_grad() # reset gradient for back propagation
         loss.backward()
-        optimizer.step()
+        optimizer.step() # updates model's weight
 
         if (i + 1) % 100 == 0:
             print("Epoch [{}/{}], Step [{}/{}], Loss: {:.5f}".format(epoch + 1, num_epochs, i + 1, len(train_loader), loss.item()))
