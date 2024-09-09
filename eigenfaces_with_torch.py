@@ -28,6 +28,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random
 X_train = torch.tensor(X_train, dtype=torch.float32)
 X_test = torch.tensor(X_test, dtype=torch.float32)
 
+n_components = 150
 # Center the data by subtracting the mean
 mean = torch.mean(X_train, dim=0)
 X_train -= mean
@@ -37,7 +38,7 @@ X_test -= mean
 U, S, V = torch.linalg.svd(X_train, full_matrices=False)
 
 # Select the top components
-n_components = 150
+
 components = V[:n_components]
 eigenfaces = components.reshape((n_components, h, w))
 
