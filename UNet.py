@@ -60,7 +60,7 @@ class UNet(nn.Module):
         The encoder is the first half of the UNet architecture.
         Each block has repeated 3x3 convolutional networks, followed by ReLu
         After, 2x2 max pooling layers are used to down sample/
-        Each downsampling then doubles the amount of channels 
+        Each downsampling then doubles the amount of channels
 
         Max Pooling is done in forward()
         """
@@ -115,8 +115,8 @@ class UNet(nn.Module):
         feature map. Each concatenated feature map is then passed through the
         next blick.
 
-        Decoder extracts semantic information (e.g. what hte item is). The 
-        encoder contains the spatial information (e.g. this is where). 
+        Decoder extracts semantic information (e.g. what hte item is). The
+        encoder contains the spatial information (e.g. this is where).
         Skip connections allow the image to have both what the thing is and where
 
         """
@@ -188,7 +188,7 @@ class BrainSegmentationDataset(Dataset):
 class DiceLoss(nn.Module):
     """
     A Coefficient between 0 and 1 that determiens the similarity between 2 samples
-    For brain MRI, it is used to evaluate the ground truth to the prediction made 
+    For brain MRI, it is used to evaluate the ground truth to the prediction made
     by the UNet
 
     Formula = 2 * number of pixels in common between the 2/ total number of pixels
@@ -273,37 +273,6 @@ criterion = DiceLoss()  # Use DiceLoss for binary segmentation
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 print(model)
 
-
-# Training loop
-num_epochs = 20
-for epoch in range(num_epochs):
-    model.train()
-    running_loss = 0.0
-    running_dice = 0.0  # Track total Dice coefficient for the epoch
-    for i, (images, labels) in enumerate(train_loader):
-        images = images.to(device)
-        labels = labels.to(device)
-
-        # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item() * images.size(0)
-        dice = criterion.dice_coefficient(outputs, labels).item()  # Calculate Dice coefficient for this batch
-        running_dice += dice * images.size(0)
-
-        if (i + 1) % 100 == 0:
-            print(f"Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.5f}, Dice: {dice:.5f}")
-
-    epoch_loss = running_loss / len(train_loader.dataset)
-    epoch_dice = running_dice / len(train_loader.dataset)
-    print(f"Epoch [{epoch+1}/{num_epochs}] completed. Average Loss: {epoch_loss:.5f}, Average Dice: {epoch_dice:.5f}")
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -367,52 +336,65 @@ def save_visualization(images, labels, outputs, idx=0, file_name_prefix='visuali
     plt.close(fig)
 
 
-# Validation loop
-model.eval()
-with torch.no_grad():
+# Training loop
+num_epochs = 20
+for epoch in range(num_epochs):
+    model.train()
     running_loss = 0.0
-    running_dice = 0.0  # Track total Dice coefficient for the validation set
-    total_samples = 0  # To track the total number of samples processed
+    running_dice = 0.0  # Track total Dice coefficient for the epoch
 
-    # Keep track of the number of saved visualizations
-    saved_visualizations = 0
-    max_visualizations = 5  # Number of visualizations to save
-
-    for images, labels in val_loader:
+    for i, (images, labels) in enumerate(train_loader):
         images = images.to(device)
         labels = labels.to(device)
 
+        # Forward pass
         outputs = model(images)
         loss = criterion(outputs, labels)
 
-        running_loss += loss.item() * images.size(0)
+        # Backward and optimize
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-        # Ensure outputs and labels are properly processed
-        outputs = torch.sigmoid(outputs)  # Convert logits to probabilities
+        running_loss += loss.item() * images.size(0)
         dice = criterion.dice_coefficient(outputs, labels).item()  # Calculate Dice coefficient for this batch
         running_dice += dice * images.size(0)
 
-        total_samples += images.size(0)
+        if (i + 1) % 100 == 0:
+            print(f"Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}, Dice Coefficient: {dice:.4f}")
 
-        # Save a few samples
-        if saved_visualizations < max_visualizations:
-            for i in range(min(images.size(0), max_visualizations - saved_visualizations)):
-                save_visualization(images, labels, outputs, idx=i, file_name_prefix=f'visualization_{saved_visualizations + i}')
-            saved_visualizations += min(images.size(0), max_visualizations - saved_visualizations)
+    # Calculate average loss and dice for the epoch
+    epoch_loss = running_loss / len(train_loader.dataset)
+    epoch_dice = running_dice / len(train_loader.dataset)
 
-        # Stop if we've saved enough visualizations
-        if saved_visualizations >= max_visualizations:
-            break
+    print(f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {epoch_loss:.4f}, Training Dice: {epoch_dice:.4f}")
 
-    # Compute average metrics
-    val_loss = running_loss / total_samples
-    val_dice = running_dice / total_samples
-    print(f'Validation Loss: {val_loss:.5f}, Validation Dice: {val_dice:.5f}')
+    # Validation step
+    model.eval()
+    val_loss = 0.0
+    val_dice = 0.0
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images = images.to(device)
+            labels = labels.to(device)
 
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item() * images.size(0)
+
+            dice = criterion.dice_coefficient(outputs, labels).item()
+            val_dice += dice * images.size(0)
+
+    # Calculate average validation loss and dice
+    val_loss /= len(val_loader.dataset)
+    val_dice /= len(val_loader.dataset)
+
+    print(f"Epoch [{epoch+1}/{num_epochs}], Validation Loss: {val_loss:.4f}, Validation Dice: {val_dice:.4f}")
+
+    save_visualization(images, labels, outputs, idx=0, file_name_prefix=f'epoch_{epoch+1}_visualization')
 """
 Improvements:
 - overfitting (regularization, early stopping)
-- have to check validation set 
+- have to check validation set
 - Improper learning rate and optimizer
 """
-
